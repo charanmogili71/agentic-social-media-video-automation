@@ -1,0 +1,55 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=password123
+      - N8N_HOST=localhost
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=7d
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - video-agent-network
+    restart: unless-stopped
+
+  python-worker:
+    build: ./scripts
+    container_name: video-agent-python
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ./scripts:/app
+      - ./outputs:/app/outputs
+    networks:
+      - video-agent-network
+    restart: unless-stopped
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: video-agent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    networks:
+      - video-agent-network
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
+  ollama_data:
+
+networks:
+  video-agent-network:
+    driver: bridge
